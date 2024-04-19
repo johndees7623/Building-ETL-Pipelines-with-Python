@@ -2,15 +2,17 @@
 # pip install pyarrow
 # pip install certifi
 
-import urllib3
-from urllib3 import request
 import certifi
 import json
-import sqlite3
 import pandas as pd
+import urllib3
+from urllib3 import request
+from sqlalchemy import create_engine
 import logging
+from logging_config import setup_logging
 
-import logging
+# define root level logger
+setup_logging()
 
 # define top level module logger
 logger = logging.getLogger(__name__)
@@ -18,9 +20,9 @@ logger = logging.getLogger(__name__)
 def source_data_from_parquet(parquet_file_name):
     try:
         df_parquet = pd.read_parquet(parquet_file_name)
-        logger.info(f'{parquet_file_name} : extracted {df_parquet.shape[0]} records from the parguet file')
+        logger.info(f'{parquet_file_name} : extracted {df_parquet.shape[0]} records from the parquet file')
     except Exception as e:
-        logger.exception( f'{parquet_file_name} : - exception {e} encountered while extracting the parguet file')
+        logger.exception(f'{parquet_file_name} : - exception {e} encountered while extracting the parquet file')
         df_parquet = pd.DataFrame()
     return df_parquet
 
@@ -36,8 +38,8 @@ def source_data_from_csv(csv_file_name):
 
 def source_data_from_api(api_endpoint):
     try:
-        # Check if API is available to retrive the data
-        # Sometimes we get certificate error . We should never silence this error as this may cause a securirty threat.
+        # Check if API is available to retrieve the data
+        # Sometimes we get certificate error . We should never silence this error as this may cause a security threat.
         # Create a Pool manager that can be used to read the API response 
         http = urllib3.PoolManager(cert_reqs='CERT_REQUIRED',ca_certs=certifi.where())
         api_response = http.request('GET', api_endpoint)
@@ -55,14 +57,28 @@ def source_data_from_api(api_endpoint):
         df_api = pd.DataFrame()
     return df_api
 
-def source_data_from_table(db_name, table_name):
+# def source_data_from_table(db_name, table_name):
+#     try:
+#         # Read sqlite query results into a pandas DataFrame
+#         with sqlite3.connect(db_name) as conn:
+#             df_table = pd.read_sql(f"SELECT * from {table_name}", conn)
+#             logger.info(f'{db_name}- read {df_table.shape[0]} records from the table: {table_name}')
+#     except Exception as e:
+#         logger.exception(f'{db_name} : - exception {e} encountered while reading data from the table: {table_name}')
+#         df_table = pd.DataFrame()
+#     return df_table
+
+def source_data_from_sql(sqlalchemy_engine, query):
     try:
-        # Read sqlite query results into a pandas DataFrame
-        with sqlite3.connect(db_name) as conn:
-            df_table = pd.read_sql(f"SELECT * from {table_name}", conn)
-            logger.info(f'{db_name}- read {df_table.shape[0]} records from the table: {table_name}')
+        engine = create_engine(sqlalchemy_engine)
+        with engine.connect() as conn:
+            df_table = pd.read_sql(query, conn)
+        logger.info(f'{sqlalchemy_engine} - read {df_table.shape[0]} records from the query: {query}')
+        # # Read sqlite query results into a pandas DataFrame
+        # with sqlite3.connect(db_name) as conn:
+        #     df_table = pd.read_sql(f"SELECT * from {table_name}", conn)
     except Exception as e:
-        logger.exception(f'{db_name} : - exception {e} encountered while reading data from the table: {table_name}')                 
+        logger.exception(f'{sqlalchemy_engine} : - exception {e} encountered while reading data from the query: {query}')
         df_table = pd.DataFrame()
     return df_table
 
@@ -78,22 +94,52 @@ def source_data_from_webpage(web_page_url,matching_keyword):
         df_html = pd.DataFrame()
     return df_html
 
-def extractd_data():
-        parquet_file_name = "yellow_tripdata_2022-01.parquet"
-        csv_file_name = "h9gi-nx95.csv"
+def extract_data():
+        parquet_file_name = "../data/yellow_tripdata_2022-01.parquet"
+        csv_file_name = "../data/h9gi-nx95.csv"
         api_endpoint = "https://data.cityofnewyork.us/resource/h9gi-nx95.json?$limit=500"
-        db_name = "movies.sqlite"
-        table_name = "movies"
+        sqlalchemy_engine = "mssql+pyodbc://datadevjobs.d.db.vu.local/DataDevJobsRepo?driver=ODBC+Driver+17+for+SQL+Server"
+        query = "SELECT * FROM Logging.SolutionOverviewServers"
         web_page_url = "https://en.wikipedia.org/wiki/List_of_countries_by_GDP_(nominal)"
         matching_keyword = "by country"
 
         # Extract data from all source systems
-        # Now these dataframes are available for loading data into eithter VSA table, PSA table or to be consumed in 
-        # transfromation pipeline.
+        # Now these dataframes are available for loading data into either VSA table, PSA table or to be consumed in
+        # transformation pipeline.
 
-        df_parquet,df_csv,df_api,df_table,df_html = (source_data_from_parquet(parquet_file_name),
-                                                    source_data_from_csv(csv_file_name),
-                                                    source_data_from_api(api_endpoint),
-                                                    source_data_from_table(db_name, table_name),
-                                                    source_data_from_webpage(web_page_url,matching_keyword))
-        return df_parquet,df_csv,df_api,df_table,df_html
+        # df_parquet,df_csv,df_api,df_table,df_html = (source_data_from_parquet(parquet_file_name),
+        #                                             source_data_from_csv(csv_file_name),
+        #                                             source_data_from_api(api_endpoint),
+        #                                             source_data_from_table(db_name, table_name),
+        #                                             source_data_from_webpage(web_page_url,matching_keyword))
+        # return df_parquet,df_csv,df_api,df_table,df_html
+
+        # this approach runs them one at a time for easier debugging
+        # Retrieve data from a Parquet file
+        df_parquet = source_data_from_parquet(parquet_file_name)
+
+        # Retrieve data from a CSV file
+        df_csv = source_data_from_csv(csv_file_name)
+
+        # # Fetch data from an API endpoint
+        # df_api = source_data_from_api(api_endpoint)
+        #
+        # # Execute a SQL query to retrieve data from a database
+        # df_table = source_data_from_sql(sqlalchemy_engine, query)
+        #
+        # # Scrape data from a webpage
+        # df_html = source_data_from_webpage(web_page_url, matching_keyword)
+
+        # Return the DataFrames
+        # return df_parquet, df_csv, df_api, df_table, df_html
+        return df_parquet, df_csv
+
+#run main extract_data() function and print sample output
+# df_parquet, df_csv, df_api, df_table, df_html = extract_data()
+df_parquet, df_csv = extract_data()
+
+print(df_parquet.head())
+print(df_csv.head())
+# print(df_api.head())
+# print(df_table.head())
+# print(df_html.head())

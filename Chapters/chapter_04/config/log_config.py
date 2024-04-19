@@ -19,8 +19,9 @@ def log_config():
         'handlers': {
             'default_handler': {
                 'class': 'logging.FileHandler',
-                'level': 'DEBUG',
+                'level': 'DEBUG',  # was 'DEBUG'
                 'formatter': 'standard',
+                # 'filename': r'C:\Users\john.dees\PycharmProjects\Building-ETL-Pipelines-with-Python\Chapters\chapter_04\logs\etl_pipeline.log',
                 'filename': os.path.join('logs', 'etl_pipeline.log'),
                 'encoding': 'utf8'
             },
@@ -28,7 +29,7 @@ def log_config():
         'loggers': {
             '': {
                 'handlers': ['default_handler'],
-                'level': 'DEBUG',
+                'level': 'DEBUG',  # was 'DEBUG'
                 'propagate': False
             }
         }

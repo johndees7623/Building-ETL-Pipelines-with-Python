@@ -4,6 +4,19 @@ verify_ssl = true
 name = "pypi"
 
 [packages]
+pandas = "2.2.1"
+requests = "2.31.0"
+numpy = "1.23.2"
+dask = "*"
+numba = "*"
+jupyter = "*"
+matplotlib = "*"
+pyarrow = "*"
+certifi = "*"
+urllib3 = "*"
+pyodbc = "*"
+sqlalchemy = "*"
+lxml = "*"
 
 [dev-packages]
 
